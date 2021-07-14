@@ -520,6 +520,13 @@ func (c *Controller) checkGatewayReady() error {
 			if util.GatewayContains(subnet.Spec.GatewayNode, node.Name) {
 				ipStr := node.Annotations[util.IpAddressAnnotation]
 				for _, ip := range strings.Split(ipStr, ",") {
+					var cidrBlock string
+					for _, cidrBlock = range strings.Split(subnet.Spec.CIDRBlock, ",") {
+						if util.CheckProtocol(cidrBlock) != util.CheckProtocol(ip) {
+							continue
+						}
+					}
+
 					pinger, err := goping.NewPinger(ip)
 					if err != nil {
 						return fmt.Errorf("failed to init pinger, %v", err)
@@ -538,15 +545,19 @@ func (c *Controller) checkGatewayReady() error {
 					}
 					pinger.Run()
 
-					exist, err := c.checkNodeEcmpRouteExist(ip, subnet.Spec.CIDRBlock)
+					exist, err := c.checkNodeEcmpRouteExist(ip, cidrBlock)
 					if err != nil {
 						klog.Errorf("get ecmp static route for subnet %v, error %v", subnet.Name, err)
 						break
 					}
+					if !nodeReady(node) {
+						success = false
+					}
+
 					if !success {
-						klog.Warningf("failed to ping gw %s", ip)
+						klog.Warningf("failed to ping ovn0 %s or node %v is not ready", ip, node.Name)
 						if exist {
-							if err := c.deleteStaticRoute(ip, c.config.ClusterRouter, subnet); err != nil {
+							if err := c.ovnClient.DeleteMatchedStaticRoute(cidrBlock, ip, c.config.ClusterRouter); err != nil {
 								klog.Errorf("failed to delete static route %s for node %s, %v", ip, node.Name, err)
 								return err
 							}

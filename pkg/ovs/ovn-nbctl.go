@@ -747,6 +747,14 @@ func (c Client) DeleteNatRule(logicalIP, router string) error {
 	return err
 }
 
+func (c Client) DeleteMatchedStaticRoute(cidr, nexthop, router string) error {
+	if cidr == "" || nexthop == "" {
+		return nil
+	}
+	_, err := c.ovnNbCommand(IfExists, "lr-route-del", router, cidr, nexthop)
+	return err
+}
+
 // DeleteStaticRoute delete a static route rule in ovn
 func (c Client) DeleteStaticRoute(cidr, router string) error {
 	if cidr == "" {
