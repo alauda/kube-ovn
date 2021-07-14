@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	_ "github.com/kubeovn/kube-ovn/test/e2e-vlan-single-nic/kubectl-ko"
 	_ "github.com/kubeovn/kube-ovn/test/e2e-vlan-single-nic/node"
 	"github.com/kubeovn/kube-ovn/test/e2e/framework"
 )
