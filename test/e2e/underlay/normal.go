@@ -91,7 +91,7 @@ var _ = Describe("[Provider Network]", func() {
 			}
 			_, err := f.OvnClientSet.KubeovnV1().ProviderNetworks().Create(context.Background(), &pn, metav1.CreateOptions{})
 			Expect(err).NotTo(HaveOccurred())
-			err = f.WaitProviderNetworkReady(name)
+			err = f.WaitProviderNetworkReady(pn.Name)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("validate node labels")
@@ -99,10 +99,10 @@ var _ = Describe("[Provider Network]", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes.Items {
-				Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkExcludeTemplate, name)]).To(BeEmpty())
-				Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkInterfaceTemplate, name)]).To(Equal(providerInterface))
-				Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkReadyTemplate, name)]).To(Equal("true"))
-				Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkMtuTemplate, name)]).NotTo(BeEmpty())
+				Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkExcludeTemplate, pn.Name)]).To(BeEmpty())
+				Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkInterfaceTemplate, pn.Name)]).To(Equal(providerInterface))
+				Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkReadyTemplate, pn.Name)]).To(Equal("true"))
+				Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkMtuTemplate, pn.Name)]).NotTo(BeEmpty())
 			}
 
 			By("validate provider interface and OVS bridge")
@@ -145,7 +145,7 @@ var _ = Describe("[Provider Network]", func() {
 					Expect(found).To(BeTrue())
 				}
 
-				stdout, _, err = f.ExecToPodThroughAPI("ovs-vsctl list-ports "+util.ExternalBridgeName(name), "openvswitch", ovsPod.Name, ovsPod.Namespace, nil)
+				stdout, _, err = f.ExecToPodThroughAPI("ovs-vsctl list-ports "+util.ExternalBridgeName(pn.Name), "openvswitch", ovsPod.Name, ovsPod.Namespace, nil)
 				Expect(err).NotTo(HaveOccurred())
 
 				var portFound bool
@@ -157,7 +157,7 @@ var _ = Describe("[Provider Network]", func() {
 				}
 				Expect(portFound).To(BeTrue())
 
-				stdout, _, err = f.ExecToPodThroughAPI("ip addr show "+util.ExternalBridgeName(name), "openvswitch", ovsPod.Name, ovsPod.Namespace, nil)
+				stdout, _, err = f.ExecToPodThroughAPI("ip addr show "+util.ExternalBridgeName(pn.Name), "openvswitch", ovsPod.Name, ovsPod.Namespace, nil)
 				Expect(err).NotTo(HaveOccurred())
 
 				var isUp bool
@@ -218,13 +218,13 @@ var _ = Describe("[Provider Network]", func() {
 			}
 			_, err = f.OvnClientSet.KubeovnV1().ProviderNetworks().Create(context.Background(), &pn, metav1.CreateOptions{})
 			Expect(err).NotTo(HaveOccurred())
-			err = f.WaitProviderNetworkReady(name)
+			err = f.WaitProviderNetworkReady(pn.Name)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("validate node labels and OVS bridge MTU")
 			nodes, err := f.KubeClientSet.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
-			readyNodes, err := f.KubeClientSet.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: fmt.Sprintf(util.ProviderNetworkReadyTemplate+"=true", name)})
+			readyNodes, err := f.KubeClientSet.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: fmt.Sprintf(util.ProviderNetworkReadyTemplate+"=true", pn.Name)})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(nodes.Items)).To(Equal(len(readyNodes.Items)))
 
@@ -235,7 +235,7 @@ var _ = Describe("[Provider Network]", func() {
 				for _, node := range readyNodes.Items {
 					for _, addr := range node.Status.Addresses {
 						if addr.Address == pod.Status.HostIP && addr.Type == corev1.NodeInternalIP {
-							Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkMtuTemplate, name)]).To(Equal(strconv.Itoa(mtu)))
+							Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkMtuTemplate, pn.Name)]).To(Equal(strconv.Itoa(mtu)))
 							found = true
 							break
 						}
@@ -246,7 +246,7 @@ var _ = Describe("[Provider Network]", func() {
 				}
 				Expect(found).To(BeTrue())
 
-				output, _, err := f.ExecToPodThroughAPI("ip link show "+util.ExternalBridgeName(name), "openvswitch", pod.Name, pod.Namespace, nil)
+				output, _, err := f.ExecToPodThroughAPI("ip link show "+util.ExternalBridgeName(pn.Name), "openvswitch", pod.Name, pod.Namespace, nil)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(output).To(ContainSubstring(" mtu %d ", mtu))
 			}
@@ -272,7 +272,7 @@ var _ = Describe("[Provider Network]", func() {
 			}
 			_, err = f.OvnClientSet.KubeovnV1().ProviderNetworks().Create(context.Background(), &pn, metav1.CreateOptions{})
 			Expect(err).NotTo(HaveOccurred())
-			err = f.WaitProviderNetworkReady(name)
+			err = f.WaitProviderNetworkReady(pn.Name)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("validate node labels")
@@ -281,15 +281,15 @@ var _ = Describe("[Provider Network]", func() {
 
 			for _, node := range nodes.Items {
 				if node.Name == excludedNode {
-					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkExcludeTemplate, name)]).To(Equal("true"))
-					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkInterfaceTemplate, name)]).To(BeEmpty())
-					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkReadyTemplate, name)]).To(BeEmpty())
-					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkMtuTemplate, name)]).To(BeEmpty())
+					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkExcludeTemplate, pn.Name)]).To(Equal("true"))
+					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkInterfaceTemplate, pn.Name)]).To(BeEmpty())
+					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkReadyTemplate, pn.Name)]).To(BeEmpty())
+					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkMtuTemplate, pn.Name)]).To(BeEmpty())
 				} else {
-					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkExcludeTemplate, name)]).To(BeEmpty())
-					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkInterfaceTemplate, name)]).To(Equal(providerInterface))
-					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkReadyTemplate, name)]).To(Equal("true"))
-					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkMtuTemplate, name)]).NotTo(BeEmpty())
+					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkExcludeTemplate, pn.Name)]).To(BeEmpty())
+					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkInterfaceTemplate, pn.Name)]).To(Equal(providerInterface))
+					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkReadyTemplate, pn.Name)]).To(Equal("true"))
+					Expect(node.Labels[fmt.Sprintf(util.ProviderNetworkMtuTemplate, pn.Name)]).NotTo(BeEmpty())
 				}
 			}
 
@@ -323,7 +323,7 @@ var _ = Describe("[Provider Network]", func() {
 
 					var brFound bool
 					for _, br := range strings.Split(stdout, "\n") {
-						if br == util.ExternalBridgeName(name) {
+						if br == util.ExternalBridgeName(pn.Name) {
 							brFound = true
 							break
 						}
@@ -364,7 +364,7 @@ var _ = Describe("[Provider Network]", func() {
 						Expect(found).To(BeTrue())
 					}
 
-					stdout, _, err = f.ExecToPodThroughAPI("ovs-vsctl list-ports "+util.ExternalBridgeName(name), "openvswitch", ovsPod.Name, ovsPod.Namespace, nil)
+					stdout, _, err = f.ExecToPodThroughAPI("ovs-vsctl list-ports "+util.ExternalBridgeName(pn.Name), "openvswitch", ovsPod.Name, ovsPod.Namespace, nil)
 					Expect(err).NotTo(HaveOccurred())
 
 					var portFound bool
@@ -376,7 +376,7 @@ var _ = Describe("[Provider Network]", func() {
 					}
 					Expect(portFound).To(BeTrue())
 
-					stdout, _, err = f.ExecToPodThroughAPI("ip addr show "+util.ExternalBridgeName(name), "openvswitch", ovsPod.Name, ovsPod.Namespace, nil)
+					stdout, _, err = f.ExecToPodThroughAPI("ip addr show "+util.ExternalBridgeName(pn.Name), "openvswitch", ovsPod.Name, ovsPod.Namespace, nil)
 					Expect(err).NotTo(HaveOccurred())
 
 					var isUp bool
@@ -434,7 +434,7 @@ var _ = Describe("[Provider Network]", func() {
 			}
 			_, err := f.OvnClientSet.KubeovnV1().ProviderNetworks().Create(context.Background(), &pn, metav1.CreateOptions{})
 			Expect(err).NotTo(HaveOccurred())
-			err = f.WaitProviderNetworkReady(name)
+			err = f.WaitProviderNetworkReady(pn.Name)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("delete provider network")
@@ -443,7 +443,7 @@ var _ = Describe("[Provider Network]", func() {
 			time.Sleep(3 * time.Second)
 
 			By("validate node labels")
-			readyNodes, err := f.KubeClientSet.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: fmt.Sprintf(util.ProviderNetworkReadyTemplate+"=true", name)})
+			readyNodes, err := f.KubeClientSet.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: fmt.Sprintf(util.ProviderNetworkReadyTemplate+"=true", pn.Name)})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(readyNodes.Items)).To(Equal(0))
 
@@ -475,7 +475,7 @@ var _ = Describe("[Provider Network]", func() {
 
 				var brFound bool
 				for _, br := range strings.Split(stdout, "\n") {
-					if br == util.ExternalBridgeName(name) {
+					if br == util.ExternalBridgeName(pn.Name) {
 						brFound = true
 						break
 					}

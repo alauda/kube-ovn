@@ -2309,12 +2309,16 @@ trace(){
       nicName="eth0"
     fi
 
-    output=$(kubectl exec "$ovnCni" -n $KUBE_OVN_NS -- nsenter --net="/var/run/netns/$podNetNs" arping -c1 -i "$nicName" "$gateway")
+    cmd="arping -c1 -i $nicName $gateway"
+    if [ "$gateway" != "${1#*:[0-9a-fA-F]}" ]; then
+      cmd="ndisc6 $gateway $nicName"
+    fi
+    output=$(kubectl exec "$ovnCni" -n $KUBE_OVN_NS -- nsenter --net="/var/run/netns/$podNetNs" sh -c "eval $cmd")
     if [ $? -ne 0 ]; then
       echo "failed to run 'arping -c1 -i $nicName $gateway' in Pod netns"
       exit 1
     fi
-    gwMac=$(echo "$output" | grep -o -E '([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}')
+    gwMac=$(echo "$output" | grep -o -E grep -o -E '([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}')
   else
     gwMac=$(kubectl exec $OVN_NB_POD -n $KUBE_OVN_NS -c ovn-central -- ovn-nbctl --data=bare --no-heading --columns=mac find logical_router_port name=ovn-cluster-"$ls" | tr -d '\r')
   fi
