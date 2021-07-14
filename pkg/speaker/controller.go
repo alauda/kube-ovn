@@ -32,9 +32,10 @@ type Controller struct {
 	servicesLister listerv1.ServiceLister
 	servicesSynced cache.InformerSynced
 
-	informerFactory        kubeinformers.SharedInformerFactory
-	kubeovnInformerFactory kubeovninformer.SharedInformerFactory
-	recorder               record.EventRecorder
+	informerFactory                                                kubeinformers.SharedInformerFactory
+	kubeovnInformerFactory                                         kubeovninformer.SharedInformerFactory
+	recorder                                                       record.EventRecorder
+	bgpIPv4Expected, bgpIPv4Exists, bgpIPv6Expected, bgpIPv6Exists []string
 }
 
 func NewController(config *Configuration) *Controller {
